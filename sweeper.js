@@ -5,9 +5,26 @@ require('dotenv').config();
 const MAIN_WALLET_ADDRESS = process.env.MAIN_WALLET_ADDRESS;
 const SUB_WALLET_PRIVATE_KEY = process.env.SUB_WALLET_PRIVATE_KEY;
 const TRON_NETWORK = process.env.TRON_NETWORK || 'mainnet';
-const POLLING_INTERVAL = parseInt(process.env.POLLING_INTERVAL) || 5000;
-const MIN_TRANSFER_AMOUNT = parseFloat(process.env.MIN_TRANSFER_AMOUNT) || 1;
-const FEE_RESERVE = parseFloat(process.env.FEE_RESERVE) || 0.1;
+
+// Parse and validate numeric configurations
+const parsedPollingInterval = parseInt(process.env.POLLING_INTERVAL);
+const parsedMinTransfer = parseFloat(process.env.MIN_TRANSFER_AMOUNT);
+const parsedFeeReserve = parseFloat(process.env.FEE_RESERVE);
+
+const POLLING_INTERVAL = (!isNaN(parsedPollingInterval) && parsedPollingInterval > 0) ? parsedPollingInterval : 5000;
+const MIN_TRANSFER_AMOUNT = (!isNaN(parsedMinTransfer) && parsedMinTransfer >= 0) ? parsedMinTransfer : 1;
+const FEE_RESERVE = (!isNaN(parsedFeeReserve) && parsedFeeReserve >= 0) ? parsedFeeReserve : 0.1;
+
+// Validate required configuration before TronWeb initialization
+if (!MAIN_WALLET_ADDRESS) {
+  console.error('ERROR: MAIN_WALLET_ADDRESS is not set in .env file');
+  process.exit(1);
+}
+
+if (!SUB_WALLET_PRIVATE_KEY) {
+  console.error('ERROR: SUB_WALLET_PRIVATE_KEY is not set in .env file');
+  process.exit(1);
+}
 
 // TronWeb initialization
 const HttpProvider = TronWeb.providers.HttpProvider;
@@ -31,24 +48,15 @@ const tronWeb = new TronWeb(
   SUB_WALLET_PRIVATE_KEY
 );
 
-// Validate configuration
-function validateConfig() {
-  if (!MAIN_WALLET_ADDRESS) {
-    console.error('ERROR: MAIN_WALLET_ADDRESS is not set in .env file');
-    process.exit(1);
-  }
-  
-  if (!SUB_WALLET_PRIVATE_KEY) {
-    console.error('ERROR: SUB_WALLET_PRIVATE_KEY is not set in .env file');
-    process.exit(1);
-  }
-  
+// Display configuration
+function displayConfig() {
   console.log('Configuration validated successfully');
   console.log(`Network: ${TRON_NETWORK}`);
   console.log(`Main Wallet: ${MAIN_WALLET_ADDRESS}`);
   console.log(`Sub Wallet: ${tronWeb.defaultAddress.base58}`);
   console.log(`Polling Interval: ${POLLING_INTERVAL}ms`);
   console.log(`Minimum Transfer Amount: ${MIN_TRANSFER_AMOUNT} TRX`);
+  console.log(`Fee Reserve: ${FEE_RESERVE} TRX`);
 }
 
 // Get SUB wallet balance in TRX
@@ -132,12 +140,14 @@ async function monitorWallet() {
 }
 
 // Start the sweeper bot
+let monitoringInterval;
+
 async function start() {
   console.log('═══════════════════════════════════════');
   console.log('🤖 TRX SWEEPER BOT STARTED');
   console.log('═══════════════════════════════════════');
   
-  validateConfig();
+  displayConfig();
   
   console.log('\n👀 Monitoring SUB wallet for incoming TRX...');
   console.log('Press Ctrl+C to stop\n');
@@ -146,7 +156,7 @@ async function start() {
   await monitorWallet();
   
   // Set up polling interval
-  setInterval(async () => {
+  monitoringInterval = setInterval(async () => {
     await monitorWallet();
   }, POLLING_INTERVAL);
 }
@@ -154,6 +164,9 @@ async function start() {
 // Handle graceful shutdown
 process.on('SIGINT', () => {
   console.log('\n\n🛑 Stopping TRX Sweeper Bot...');
+  if (monitoringInterval) {
+    clearInterval(monitoringInterval);
+  }
   process.exit(0);
 });
 
