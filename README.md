@@ -51,6 +51,7 @@ SUB_WALLET_PRIVATE_KEY=your_sub_wallet_private_key_here
 TRON_NETWORK=mainnet
 POLLING_INTERVAL=5000
 MIN_TRANSFER_AMOUNT=1
+FEE_RESERVE=0.1
 ```
 
 ## Configuration
@@ -64,6 +65,7 @@ Edit the `.env` file with the following parameters:
 | `TRON_NETWORK` | Network to use: `mainnet` or `shasta` (testnet) | `mainnet` |
 | `POLLING_INTERVAL` | How often to check balance (in milliseconds) | `5000` |
 | `MIN_TRANSFER_AMOUNT` | Minimum TRX balance to trigger transfer | `1` |
+| `FEE_RESERVE` | TRX amount reserved for transaction fees | `0.1` |
 
 ## Usage
 

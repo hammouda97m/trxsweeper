@@ -7,6 +7,7 @@ const SUB_WALLET_PRIVATE_KEY = process.env.SUB_WALLET_PRIVATE_KEY;
 const TRON_NETWORK = process.env.TRON_NETWORK || 'mainnet';
 const POLLING_INTERVAL = parseInt(process.env.POLLING_INTERVAL) || 5000;
 const MIN_TRANSFER_AMOUNT = parseFloat(process.env.MIN_TRANSFER_AMOUNT) || 1;
+const FEE_RESERVE = parseFloat(process.env.FEE_RESERVE) || 0.1;
 
 // TronWeb initialization
 const HttpProvider = TronWeb.providers.HttpProvider;
@@ -74,9 +75,8 @@ async function sweepBalance() {
     console.log(`\n💰 Balance detected: ${balanceInTrx} TRX`);
     console.log('🚀 Initiating sweep...');
     
-    // Reserve bandwidth/energy fee (approximately 0.1 TRX for safety)
-    const feeReserve = 0.1;
-    const amountToSend = balanceInTrx - feeReserve;
+    // Reserve bandwidth/energy fee for transaction
+    const amountToSend = balanceInTrx - FEE_RESERVE;
     
     if (amountToSend <= 0) {
       console.log('⚠️ Insufficient balance to cover transaction fee');
@@ -107,14 +107,27 @@ async function sweepBalance() {
 }
 
 // Main monitoring loop
+let isMonitoring = false;
+
 async function monitorWallet() {
-  console.log('\n🔍 Checking balance...');
+  if (isMonitoring) {
+    console.log('⏭️  Previous check still in progress, skipping...');
+    return;
+  }
   
-  const balance = await getSubWalletBalance();
-  console.log(`Current balance: ${balance} TRX`);
+  isMonitoring = true;
   
-  if (balance >= MIN_TRANSFER_AMOUNT) {
-    await sweepBalance();
+  try {
+    console.log('\n🔍 Checking balance...');
+    
+    const balance = await getSubWalletBalance();
+    console.log(`Current balance: ${balance} TRX`);
+    
+    if (balance >= MIN_TRANSFER_AMOUNT) {
+      await sweepBalance();
+    }
+  } finally {
+    isMonitoring = false;
   }
 }
 
